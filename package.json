@@ -1,0 +1,11 @@
+{
+  "name": "rekon-e2e",
+  "private": true,
+  "description": "Browser tests for the rekon local page. Test tooling only: nothing here is compiled into the binary.",
+  "scripts": {
+    "test": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0"
+  }
+}

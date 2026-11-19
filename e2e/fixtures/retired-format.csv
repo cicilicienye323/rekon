@@ -1,0 +1,2 @@
+Status,Type,Currency,Amount,Transaction Fee Amount,Transaction VAT Amount,Withholding Tax Amount,Net Amount,Reference,Transaction ID,Payment Date,Settlement Status,Settlement Date
+SUCCESSFUL,PAYMENT,IDR,150000.00,5000.00,550.00,0.00,144450.00,REF-000001,txn_1,2026-06-30T10:00:00Z,SETTLED,2026-07-01T10:00:00Z

@@ -1,0 +1,14 @@
+# Third-party documentation saved for offline reference.
+# Kept locally, never redistributed: link to the source instead.
+reference/
+
+# Tier 3 test tooling. Never part of the binary.
+node_modules/
+e2e/results.json
+test-results/
+playwright-report/
+.testout/
+testreport.html
+
+# Screenshots are rebuilt by every test run and embedded into the PDF.
+e2e/screenshots/

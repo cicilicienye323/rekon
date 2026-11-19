@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>rekon</title>
+<style>
+:root { --ink:#16191d; --muted:#6b7480; --line:#e2e6ea; --bg:#f4f6f8;
+        --accent:#1f4d6b; --risk:#b3261e; --ok:#1f6b45; }
+* { box-sizing:border-box; }
+body { margin:0; padding:40px 20px; background:var(--bg);
+       font:14px/1.55 "Segoe UI",system-ui,sans-serif; color:var(--ink); }
+.app { max-width:720px; margin:0 auto; background:#fff; border:1px solid var(--line);
+       border-radius:6px; overflow:hidden; }
+.bar { padding:16px 24px; border-bottom:1px solid var(--line);
+       display:flex; align-items:baseline; gap:10px; }
+.bar b { font-size:16px; letter-spacing:-.01em; }
+.bar span { font-size:12.5px; color:var(--muted); }
+.body { padding:22px 24px 24px; }
+.lede { margin:0 0 18px; color:var(--muted); font-size:13px; }
+
+.slot { border:1.5px dashed #cbd3da; border-radius:5px; padding:14px 16px; margin-bottom:12px;
+        display:flex; align-items:center; gap:14px; background:#fbfcfd; }
+.slot.filled { border-style:solid; border-color:#bcd9c8; background:#f4faf6; }
+.slot.bad { border-style:solid; border-color:#e8bcb8; background:#fdf5f4; }
+.slot .icon { width:30px; height:30px; border-radius:4px; background:#eef1f4; flex:none;
+              display:flex; align-items:center; justify-content:center;
+              font:600 10px/1 "Segoe UI",sans-serif; color:var(--muted); }
+.slot.filled .icon { background:#dcefe4; color:var(--ok); }
+.slot.bad .icon { background:#f7dedb; color:var(--risk); }
+.slot .txt { flex:1; min-width:0; }
+.slot .t1 { font-weight:600; }
+.slot .t2 { font-size:12.5px; color:var(--muted); }
+.slot.bad .t2 { color:var(--risk); }
+.slot label { font-size:12.5px; color:var(--accent); white-space:nowrap; cursor:pointer; }
+.slot input[type=file] { display:none; }
+
+button { margin-top:6px; background:var(--accent); color:#fff; border:none; border-radius:5px;
+         padding:10px 20px; font:600 14px "Segoe UI",sans-serif; cursor:pointer; }
+button[disabled] { background:#c9d0d7; cursor:default; }
+.hint { margin-top:14px; font-size:12px; color:var(--muted); }
+details { margin-top:16px; font-size:12.5px; color:var(--muted); }
+summary { cursor:pointer; color:var(--accent); }
+details p { margin:8px 0 0; }
+.fix { margin-top:16px; padding:12px 14px; border-left:3px solid var(--risk);
+       background:#fdf5f4; font-size:13px; }
+.fix b { display:block; margin-bottom:3px; color:var(--risk); }
+[hidden] { display:none !important; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="bar"><b>rekon</b><span>settlement reconciliation</span></div>
+  <div class="body">
+    <p class="lede">Choose the two files for the day. The order does not matter.</p>
+
+    <form id="form" method="post" action="/reconcile" enctype="multipart/form-data">
+      <div class="slot" id="slot-a">
+        <div class="icon">CSV</div>
+        <div class="txt">
+          <div class="t1">First file</div>
+          <div class="t2">The transaction report from Xendit, or your order export</div>
+        </div>
+        <label>Choose file<input type="file" name="a" accept=".csv,text/csv"></label>
+      </div>
+
+      <div class="slot" id="slot-b">
+        <div class="icon">CSV</div>
+        <div class="txt">
+          <div class="t1">Second file</div>
+          <div class="t2">Whichever of the two the first slot is not</div>
+        </div>
+        <label>Choose file<input type="file" name="b" accept=".csv,text/csv"></label>
+      </div>
+
+      <button id="go" disabled>Reconcile</button>
+    </form>
+
+    <div class="hint">Both files stay on this computer. Nothing is uploaded anywhere.</div>
+
+    <div class="fix" id="fix" hidden>
+      <b>Why this stops here</b>
+      <span id="fix-text"></span>
+    </div>
+
+    <details>
+      <summary>Where do I get these files?</summary>
+      <p><b>Provider report.</b> Xendit dashboard, Transaction, Export. Pick the date range and
+      choose CSV. The report arrives by email.</p>
+      <p><b>Internal orders.</b> The daily order export from your own system.</p>
+    </details>
+  </div>
+</div>
+
+<script>
+// Each file is checked the moment it is chosen, next to the slot it was chosen
+// for, rather than after the operator has committed to a run.
+const state = {a: null, b: null};
+
+function paint(id, res) {
+  const slot = document.getElementById('slot-' + id);
+  const t1 = slot.querySelector('.t1');
+  const t2 = slot.querySelector('.t2');
+  const icon = slot.querySelector('.icon');
+  slot.classList.remove('filled', 'bad');
+
+  if (res && res.ok) {
+    slot.classList.add('filled');
+    icon.textContent = 'OK';
+    t1.textContent = (res.kind === 'provider' ? 'Provider report' : 'Internal orders') + ' · ' + res.name;
+    t2.textContent = res.summary;
+  } else if (res) {
+    slot.classList.add('bad');
+    icon.textContent = '!';
+    t1.textContent = res.name;
+    t2.textContent = res.error;
+  }
+  update();
+}
+
+function update() {
+  const a = state.a, b = state.b;
+  const both = a && b && a.ok && b.ok;
+  const pair = both && a.kind !== b.kind;
+  document.getElementById('go').disabled = !pair;
+
+  const fix = document.getElementById('fix');
+  const text = document.getElementById('fix-text');
+  if (a && !a.ok) { text.textContent = a.why; fix.hidden = false; }
+  else if (b && !b.ok) { text.textContent = b.why; fix.hidden = false; }
+  else if (both && !pair) {
+    text.textContent = 'Both files are the same kind. One provider report and one internal order export are needed.';
+    fix.hidden = false;
+  } else { fix.hidden = true; }
+}
+
+for (const id of ['a', 'b']) {
+  document.querySelector('input[name=' + id + ']').addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) { state[id] = null; paint(id, null); return; }
+    const body = new FormData();
+    body.append('file', file);
+    const res = await fetch('/inspect', {method: 'POST', body});
+    state[id] = await res.json();
+    paint(id, state[id]);
+  });
+}
+</script>
+</body>
+</html>
